@@ -64,7 +64,71 @@ order by 1,2
 
 -- Total Population vs Vaccinations
 
-select * from PortfolioProject..CovidDeaths dea
+select dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations
+, SUM(convert(int,vac.new_vaccinations)) over (partition by dea.location order by dea.location, dea.date) as AmountOfVaccinatedPeople
+from PortfolioProject..CovidDeaths dea
 Join PortfolioProject..CovidVaccinations vac
 	on dea.location = vac.location
 	and dea.date = vac.date
+where dea.continent is not null
+order by 2,3
+
+
+--USE CTE
+
+with PopvsVac (continent, location, date, population, New_vaccinations, AmountOfVaccinatedPeople)
+as
+(
+select dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations
+, SUM(convert(bigint,vac.new_vaccinations)) over (partition by dea.location order by dea.location, dea.date) as AmountOfVaccinatedPeople
+from PortfolioProject..CovidDeaths dea
+Join PortfolioProject..CovidVaccinations vac
+	on dea.location = vac.location
+	and dea.date = vac.date
+where dea.continent is not null
+)
+select*, (AmountOfVaccinatedPeople/population)*100
+from PopvsVac
+
+
+
+--Temp Table
+
+Drop table if exists #PercentPopulationVaccinated
+Create Table #PercentPopulationVaccinated
+(
+continent nvarchar(255),
+location nvarchar(255),
+date datetime,
+population numeric,
+new_vaccinations numeric,
+AmountOfVaccinatedPeople numeric
+)
+
+
+Insert into #PercentPopulationVaccinated
+select dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations
+, SUM(convert(bigint,vac.new_vaccinations)) over (partition by dea.location order by dea.location, dea.date) as AmountOfVaccinatedPeople
+from PortfolioProject..CovidDeaths dea
+Join PortfolioProject..CovidVaccinations vac
+	on dea.location = vac.location
+	and dea.date = vac.date
+where dea.continent is not null
+
+select*, (AmountOfVaccinatedPeople/population)*100
+from #PercentPopulationVaccinated
+
+
+--Creating view to store data for later vizualization
+
+Create view PercentPopulationVaccinated as
+select dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations
+, SUM(convert(bigint,vac.new_vaccinations)) over (partition by dea.location order by dea.location, dea.date) as AmountOfVaccinatedPeople
+from PortfolioProject..CovidDeaths dea
+Join PortfolioProject..CovidVaccinations vac
+	on dea.location = vac.location
+	and dea.date = vac.date
+where dea.continent is not null
+
+
+select * from PercentPopulationVaccinated
